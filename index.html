@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Relay — API Workspace</title>
+<meta name="description" content="A client-side API testing workspace built with vanilla HTML, CSS and JavaScript." />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ============================== TOP BAR ============================== -->
+  <header class="topbar">
+    <button class="btn icon-btn sidebar-toggle" id="sidebar-toggle" aria-label="Toggle sidebar" title="Toggle sidebar">☰</button>
+
+    <div class="brand">
+      <span class="brand-mark">⇄</span>
+      <span class="brand-name">Relay</span>
+      <span class="brand-sub">api workspace</span>
+    </div>
+
+    <div class="spacer"></div>
+
+    <label class="env-quick" title="Active environment">
+      <span class="env-quick-icon">◈</span>
+      <select id="env-select" class="select env-select" aria-label="Active environment"></select>
+    </label>
+
+    <div class="topbar-actions">
+      <button class="btn" id="btn-import" title="Import a workspace or request JSON">Import</button>
+      <button class="btn" id="btn-export" title="Export the whole workspace as JSON">Export</button>
+      <button class="btn" id="btn-settings" title="Settings">Settings</button>
+      <button class="btn icon-btn" id="theme-toggle" title="Toggle dark / light theme" aria-label="Toggle theme">◐</button>
+    </div>
+
+    <input type="file" id="file-import" accept="application/json,.json" hidden />
+  </header>
+
+  <!-- ============================== WORKSPACE ============================ -->
+  <div class="workspace">
+
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+    <!-- ------------------------------ SIDEBAR --------------------------- -->
+    <aside class="sidebar" id="sidebar">
+
+      <nav class="side-tabs" role="tablist">
+        <button class="side-tab is-active" data-side="history" role="tab">History</button>
+        <button class="side-tab" data-side="saved" role="tab">Saved</button>
+        <button class="side-tab" data-side="env" role="tab">Env</button>
+      </nav>
+
+      <!-- History -->
+      <section class="side-panel is-active" id="side-history" role="tabpanel">
+        <div class="side-head">
+          <input type="search" id="history-search" class="input input-sm" placeholder="Filter history…" spellcheck="false" aria-label="Filter history" />
+          <button class="btn btn-sm danger-ghost" id="btn-clear-history" title="Delete every history entry">Clear</button>
+        </div>
+        <ul class="list" id="history-list"></ul>
+      </section>
+
+      <!-- Saved requests -->
+      <section class="side-panel" id="side-saved" role="tabpanel">
+        <div class="side-head">
+          <input type="search" id="saved-search" class="input input-sm" placeholder="Filter saved…" spellcheck="false" aria-label="Filter saved requests" />
+          <button class="btn btn-sm" id="btn-save-current" title="Save the active request">Save current</button>
+        </div>
+        <ul class="list" id="saved-list"></ul>
+      </section>
+
+      <!-- Environments -->
+      <section class="side-panel" id="side-env" role="tabpanel">
+        <div class="side-head">
+          <select id="env-picker" class="select select-sm" aria-label="Environment being edited"></select>
+        </div>
+        <div class="side-head side-head-tight">
+          <button class="btn btn-sm" id="btn-env-new" title="New environment">New</button>
+          <button class="btn btn-sm" id="btn-env-rename" title="Rename environment">Rename</button>
+          <button class="btn btn-sm" id="btn-env-dupe" title="Duplicate environment">Copy</button>
+          <button class="btn btn-sm danger-ghost" id="btn-env-del" title="Delete environment">Delete</button>
+        </div>
+        <p class="side-note">
+          Reference these anywhere in a URL, header or body with <code>{{name}}</code>.
+        </p>
+        <div class="env-kv" id="env-vars"></div>
+      </section>
+
+    </aside>
+
+    <!-- -------------------------------- MAIN ---------------------------- -->
+    <main class="main">
+
+      <!-- Open request tabs -->
+      <div class="tabstrip" id="tabstrip-wrap">
+        <div class="tabstrip-scroll" id="tabstrip" role="tablist"></div>
+        <button class="btn icon-btn tab-new" id="btn-newtab" title="New request (Ctrl+Alt+T)" aria-label="New request">+</button>
+      </div>
+
+      <!-- URL bar -->
+      <div class="urlbar">
+        <select id="method-select" class="select method" aria-label="HTTP method">
+          <option>GET</option>
+          <option>POST</option>
+          <option>PUT</option>
+          <option>PATCH</option>
+          <option>DELETE</option>
+          <option>HEAD</option>
+          <option>OPTIONS</option>
+        </select>
+        <div class="url-wrap">
+          <input type="text" id="url-input" class="input url" spellcheck="false" autocomplete="off" placeholder="https://jsonplaceholder.typicode.com/posts/1   or   {{baseUrl}}/posts" aria-label="Request URL" />
+          <div class="url-preview" id="url-preview" hidden></div>
+        </div>
+        <button class="btn primary" id="btn-send" title="Send (Ctrl+Enter)">Send</button>
+        <button class="btn" id="btn-save" title="Save request (Ctrl+S)">Save</button>
+      </div>
+
+      <!-- Split panes -->
+      <div class="panes" id="panes">
+
+        <!-- ---------------------- REQUEST PANE ---------------------- -->
+        <section class="pane req-pane">
+          <nav class="subtabs" id="req-subtabs" role="tablist">
+            <button class="subtab is-active" data-reqtab="params" role="tab">Params <span class="count" id="count-params"></span></button>
+            <button class="subtab" data-reqtab="headers" role="tab">Headers <span class="count" id="count-headers"></span></button>
+            <button class="subtab" data-reqtab="body" role="tab">Body <span class="count" id="count-body"></span></button>
+            <div class="subtabs-right">
+              <button class="btn btn-sm ghost" id="btn-copy-curl" title="Copy this request as a cURL command">Copy as cURL</button>
+            </div>
+          </nav>
+
+          <div class="pane-body">
+            <!-- Query params -->
+            <div class="reqtab is-active" id="reqtab-params">
+              <div class="kv-host" id="params-host"></div>
+            </div>
+
+            <!-- Headers -->
+            <div class="reqtab" id="reqtab-headers">
+              <div class="kv-host" id="headers-host"></div>
+            </div>
+
+            <!-- Body -->
+            <div class="reqtab" id="reqtab-body">
+              <div class="body-modes" id="body-modes" role="tablist">
+                <label class="radio"><input type="radio" name="bodymode" value="none" checked /> <span>none</span></label>
+                <label class="radio"><input type="radio" name="bodymode" value="json" /> <span>JSON</span></label>
+                <label class="radio"><input type="radio" name="bodymode" value="raw" /> <span>raw</span></label>
+                <label class="radio"><input type="radio" name="bodymode" value="form" /> <span>x-www-form-urlencoded</span></label>
+                <div class="body-modes-right">
+                  <span class="json-status" id="json-status"></span>
+                  <button class="btn btn-sm ghost" id="btn-format-json" hidden title="Pretty-print the JSON body">Format</button>
+                </div>
+              </div>
+
+              <div class="body-editors">
+                <div class="body-editor is-active" id="body-none">
+                  <p class="empty-note">This request does not send a body.</p>
+                </div>
+                <div class="body-editor" id="body-json-wrap">
+                  <textarea id="body-json" class="code-area" spellcheck="false" placeholder="{ &quot;title&quot;: &quot;hello&quot;, &quot;userId&quot;: {{userId}} }"></textarea>
+                </div>
+                <div class="body-editor" id="body-raw-wrap">
+                  <textarea id="body-raw" class="code-area" spellcheck="false" placeholder="Raw request payload — sent verbatim."></textarea>
+                </div>
+                <div class="body-editor" id="body-form-wrap">
+                  <div class="kv-host" id="form-host"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ------------------------- SPLITTER ----------------------- -->
+        <div class="splitter" id="splitter" role="separator" aria-label="Resize panes" tabindex="0"></div>
+
+        <!-- ---------------------- RESPONSE PANE --------------------- -->
+        <section class="pane res-pane">
+          <nav class="subtabs" id="res-subtabs" role="tablist">
+            <button class="subtab is-active" data-restab="body" role="tab">Response</button>
+            <button class="subtab" data-restab="headers" role="tab">Headers <span class="count" id="count-res-headers"></span></button>
+            <button class="subtab" data-restab="request" role="tab">Sent</button>
+            <div class="subtabs-right meta" id="res-meta" hidden>
+              <span class="status-badge" id="res-status"></span>
+              <span class="meta-chip" id="res-time"></span>
+              <span class="meta-chip" id="res-size"></span>
+              <button class="btn btn-sm ghost" id="btn-copy-res" title="Copy response body">Copy</button>
+              <button class="btn btn-sm ghost" id="btn-save-res" title="Download response body">Save</button>
+            </div>
+          </nav>
+
+          <div class="pane-body">
+            <!-- Response body -->
+            <div class="restab is-active" id="restab-body">
+              <div class="res-toolbar" id="res-toolbar" hidden>
+                <div class="seg" role="tablist">
+                  <button class="seg-btn is-active" data-resview="pretty" role="tab">Pretty</button>
+                  <button class="seg-btn" data-resview="raw" role="tab">Raw</button>
+                  <button class="seg-btn" data-resview="preview" role="tab">Preview</button>
+                </div>
+                <label class="check wrap-check"><input type="checkbox" id="chk-wrap" /> <span>Wrap</span></label>
+                <span class="ctype" id="res-ctype"></span>
+              </div>
+              <div class="res-scroll" id="res-body"></div>
+            </div>
+
+            <!-- Response headers -->
+            <div class="restab" id="restab-headers">
+              <div class="res-scroll" id="res-headers"></div>
+            </div>
+
+            <!-- What was actually sent -->
+            <div class="restab" id="restab-request">
+              <div class="res-scroll" id="res-request"></div>
+            </div>
+          </div>
+        </section>
+
+      </div><!-- /panes -->
+    </main>
+  </div><!-- /workspace -->
+
+  <footer class="statusbar">
+    <span class="sb-item" id="sb-storage">ready</span>
+    <span class="sb-sep">·</span>
+    <span class="sb-item" id="sb-env">no environment</span>
+    <div class="spacer"></div>
+    <span class="sb-item sb-hint">Ctrl+Enter send · Ctrl+S save · Ctrl+Alt+T new tab</span>
+  </footer>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div class="modal-root" id="modal-root" hidden></div>
+
+<!-- Plain classic scripts, loaded in dependency order so the tool also runs
+     straight from file:// where ES modules are blocked by CORS rules. -->
+<script src="js/util.js"></script>
+<script src="js/store.js"></script>
+<script src="js/state.js"></script>
+<script src="js/env.js"></script>
+<script src="js/kv.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/http.js"></script>
+<script src="js/request.js"></script>
+<script src="js/response.js"></script>
+<script src="js/sidebar.js"></script>
+<script src="js/portability.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
